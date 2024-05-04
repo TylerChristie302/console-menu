@@ -30,6 +30,8 @@ class ConsoleMenu(object):
         cls.currently_active_menu (:obj:`ConsoleMenu`): Class variable that holds the currently active menu or None
             if no menu is currently active (e.g. when switching between menus)
         items (:obj:`list` of :obj:`MenuItem`): The list of MenuItems that the menu will display
+        hidden_items (:obj:`list` of :obj:`MenuItem`): The list of MenuItems that the menu will not display
+        all_items (:obj:`list` of :obj:`MenuItem`): The list of all MenuItems, whether hidden or not
         parent (:obj:`ConsoleMenu`): The parent of this menu
         previous_active_menu (:obj:`ConsoleMenu`): the previously active menu to be restored into the class's
             currently active menu
@@ -62,7 +64,7 @@ class ConsoleMenu(object):
 
         self.show_exit_option = show_exit_option
 
-        self.items = list()
+        self._items = list()
 
         self.parent = None
 
@@ -82,7 +84,19 @@ class ConsoleMenu(object):
         self._running = threading.Event()
 
     def __repr__(self):
-        return "%s: %s. %d items" % (self.get_title(), self.get_subtitle(), len(self.items))
+        return "%s: %s. %d items" % (self.get_title(), self.get_subtitle(), len(self._items))
+
+    @property
+    def items(self):
+        return [item for item in self._items if not item.hidden]
+
+    @property
+    def hidden_items(self):
+        return [item for item in self._items if item.hidden]
+
+    @property
+    def all_items(self):
+        return self._items
 
     @property
     def current_item(self):
@@ -118,7 +132,7 @@ class ConsoleMenu(object):
         did_remove = self.remove_exit()
         for item in items:
             item.menu = self
-            self.items.append(item)
+            self._items.append(item)
         if did_remove:
             self.add_exit()
 
@@ -132,9 +146,9 @@ class ConsoleMenu(object):
         Returns:
             bool: True if the item was removed; False otherwise.
         """
-        for idx, _item in enumerate(self.items):
+        for idx, _item in enumerate(self._items):
             if item == _item:
-                del self.items[idx]
+                del self._items[idx]
                 return True
         return False
 
@@ -145,8 +159,8 @@ class ConsoleMenu(object):
         Returns:
             bool: True if item needed to be added, False otherwise.
         """
-        if not self.items or self.items[-1] is not self.exit_item:
-            self.items.append(self.exit_item)
+        if not self._items or self._items[-1] is not self.exit_item:
+            self._items.append(self.exit_item)
             return True
         return False
 
@@ -157,9 +171,9 @@ class ConsoleMenu(object):
         Returns:
             bool: True if item needed to be removed, False otherwise.
         """
-        if self.items:
-            if self.items[-1] is self.exit_item:
-                del self.items[-1]
+        if self._items:
+            if self._items[-1] is self.exit_item:
+                del self._items[-1]
                 return True
         return False
 
@@ -415,18 +429,20 @@ class MenuItem(object):
     A generic menu item
     """
 
-    def __init__(self, text, menu=None, should_exit=False, menu_char=None):
+    def __init__(self, text, menu=None, should_exit=False, menu_char=None, hidden=False):
         """
         :ivar str text: The text shown for this menu item
         :ivar ConsoleMenu menu: The menu to which this item belongs
         :ivar bool should_exit: Whether the menu should exit once this item's action is done
         :ivar str menu_char: The character used to select this menu item. Optional - defaults to None.
+        :ivar bool hidden: Whether the item should be displayed
         """
         self.text = text
         self.menu = menu
         self.should_exit = should_exit
         self.index_item_separator = " - "
         self.menu_char = menu_char
+        self.hidden = hidden
 
     def __str__(self):
         return "%s %s" % (self.menu.get_title(), self.get_text())
@@ -451,6 +467,14 @@ class MenuItem(object):
         else:
             ret = " %c%s%s" % (self.menu_char, self.index_item_separator, self.get_text())
         return ret
+
+    def hide(self, hidden: bool = True):
+        """
+        Hide or unhide the item
+
+        :ivar bool hidden: Whether the item should be displayed
+        """
+        self.hidden = hidden
 
     def set_up(self):
         """
