@@ -105,17 +105,20 @@ class ConsoleMenu(object):
         else:
             return None
 
-    def append_item(self, item):
+    def append_item(self, *items):
         """
-        Add an item to the end of the menu before the exit item.
+        Add one or more items to the end of the menu before the exit item.
 
         Args:
-            item (MenuItem): The item to be added.
+            items (list[MenuItem]): The item to be added.
 
         """
+        if len(items) == 0:
+            return
         did_remove = self.remove_exit()
-        item.menu = self
-        self.items.append(item)
+        for item in items:
+            item.menu = self
+            self.items.append(item)
         if did_remove:
             self.add_exit()
 
